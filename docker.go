@@ -13,7 +13,7 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, prefix, remote string) error {
+func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, prefix, remote string, authHost string) error {
 	uri, err := url.Parse(remote)
 	if err != nil {
 		return fmt.Errorf("parse remote: %w", err)
@@ -72,6 +72,13 @@ func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, 
 			logger.Println(err)
 			return fmt.Errorf("new proxy: %w", err)
 		}
+		if resp.StatusCode == http.StatusUnauthorized {
+			authHeader := resp.Header.Get("Www-Authenticate")
+			if authHeader != "";authHost != "" {
+				newAuthHeader := strings.ReplaceAll(authHeader, authHost, "https://"+r.Header.Get("Host"))
+				resp.Header.Set("Www-Authenticate", newAuthHeader)
+			}
+		}
 		defer resp.Body.Close()
 		copyHander(w, resp)
 		w.WriteHeader(resp.StatusCode)
@@ -84,6 +91,27 @@ func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, 
 		}
 		return nil
 	}
+	if authHost !="" {
+		router.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+			resp, err := proxy(authHost, r)
+			if err != nil {
+				logger.Println(err)
+				return fmt.Errorf("new proxy: %w", err)
+			}
+			defer resp.Body.Close()
+			copyHander(w, resp)
+			w.WriteHeader(resp.StatusCode)
+			if resp.StatusCode == http.StatusNotModified {
+				return nil
+			}
+			_, err = io.Copy(w, resp.Body)
+			if err != nil {
+				return fmt.Errorf("copy body: %w", err)
+			}
+			return nil
+		})
+	}
+	
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.String(), "/blobs/sha256:") {
 			err = blobCache(w, r)

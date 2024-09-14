@@ -61,6 +61,7 @@ var Mirrors = []string{
 func main() {
 	var endpoint, dlEndpoint, region, bucket, accessKey, secretKey string
 	var mirrors string
+	var minCacheSize int64 // 新增的变量，用于存储最小缓存大小
 	flag.StringVar(&endpoint, "endpoint", "", "s3 endpoint")
 	flag.StringVar(&dlEndpoint, "download_endpoint", "", "s3 download endpoint")
 	flag.StringVar(&bucket, "bucket", "", "s3 bucket")
@@ -68,6 +69,7 @@ func main() {
 	flag.StringVar(&secretKey, "secret_key", "", "s3 secret key")
 	flag.StringVar(&region, "region", "", "s3 region")
 	flag.StringVar(&mirrors, "mirrors", strings.Join(Mirrors, ","), "mirror list")
+	flag.Int64Var(&minCacheSize, "min_cache_size", 1024 * 1024, "minimum cache size in bytes") 
 	flag.Parse()
 	log.Println(endpoint, dlEndpoint)
 	if len(endpoint) == 0 {
@@ -107,7 +109,22 @@ func main() {
 	mirrorList := strings.Split(mirrors, ",")
 	for index := range mirrorList {
 		arr := strings.Split(mirrorList[index], "=>")
-		addr := arr[0]
+		originalAddr := arr[0] // 保持 addr 的原始格式
+		// 检查是否有自定义域名
+		var addr string
+		var authHost string
+		if strings.HasPrefix(originalAddr, ":") {
+			addr = originalAddr
+			authHost = ""
+		} else {
+			parts := strings.SplitN(originalAddr, ":", 2)
+			if len(parts) > 1 {
+				authHost = parts[0]
+				addr = ":" + parts[1]
+			} else {
+				addr = arr[0]
+			}
+		}
 		uri, err := url.Parse(arr[1])
 		if err != nil {
 			log.Fatal(err)
@@ -120,7 +137,7 @@ func main() {
 			switch uri.Scheme {
 			case "docker":
 				logger := log.New(os.Stderr, fmt.Sprintf("[%s] ", uri.Host), log.LstdFlags|log.Lshortfile)
-				err = dockerMirror(ctx, logger, addr, bucket, "docker", "https://"+uri.Host)
+				err = dockerMirror(ctx, logger, addr, bucket, "docker", "https://"+uri.Host, authHost)
 				log.Println(err)
 			case "pip":
 				logger := log.New(os.Stderr, fmt.Sprintf("[%s] ", uri.Host), log.LstdFlags|log.Lshortfile)
