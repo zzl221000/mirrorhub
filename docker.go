@@ -74,7 +74,7 @@ func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, 
 		}
 		if resp.StatusCode == http.StatusUnauthorized {
 			authHeader := resp.Header.Get("Www-Authenticate")
-			if authHeader != "";authHost != "" {
+			if authHeader != "" && authHost != "" {
 				newAuthHeader := strings.ReplaceAll(authHeader, authHost, "https://"+r.Header.Get("Host"))
 				resp.Header.Set("Www-Authenticate", newAuthHeader)
 			}
@@ -91,9 +91,14 @@ func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, 
 		}
 		return nil
 	}
-	if authHost !="" {
-		router.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
-			resp, err := proxy(authHost, r)
+
+	if authHost != "" {
+		authUri, err := url.Parse(authHost)
+		if err != nil {
+			return fmt.Errorf("parse remote: %w", err)
+		}
+		tokenHandler := func(w http.ResponseWriter, r *http.Request) error {
+			resp, err := proxy(authUri, r)
 			if err != nil {
 				logger.Println(err)
 				return fmt.Errorf("new proxy: %w", err)
@@ -109,9 +114,17 @@ func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, 
 				return fmt.Errorf("copy body: %w", err)
 			}
 			return nil
+		}
+
+		router.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+			err := tokenHandler(w, r)
+			if err != nil {
+				logger.Println("blob cache error:", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 		})
 	}
-	
+
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.String(), "/blobs/sha256:") {
 			err = blobCache(w, r)

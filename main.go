@@ -53,7 +53,7 @@ func copyHander(w http.ResponseWriter, resp *http.Response) {
 }
 
 var Mirrors = []string{
-	":1234=>docker://registry-1.docker.io",
+	"https://autho.docker.io:1234=>docker://registry-1.docker.io",
 	":1235=>docker://ghcr.io",
 	":1236=>pip://pypi.org",
 }
@@ -69,7 +69,7 @@ func main() {
 	flag.StringVar(&secretKey, "secret_key", "", "s3 secret key")
 	flag.StringVar(&region, "region", "", "s3 region")
 	flag.StringVar(&mirrors, "mirrors", strings.Join(Mirrors, ","), "mirror list")
-	flag.Int64Var(&minCacheSize, "min_cache_size", 1024 * 1024, "minimum cache size in bytes") 
+	flag.Int64Var(&minCacheSize, "min_cache_size", 1024*1024, "minimum cache size in bytes")
 	flag.Parse()
 	log.Println(endpoint, dlEndpoint)
 	if len(endpoint) == 0 {
