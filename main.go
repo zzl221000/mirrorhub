@@ -117,10 +117,11 @@ func main() {
 			addr = originalAddr
 			authHost = ""
 		} else {
-			parts := strings.SplitN(originalAddr, ":", 2)
+			parts := strings.SplitN(originalAddr, ":", 3)
 			if len(parts) > 1 {
-				authHost = parts[0]
-				addr = ":" + parts[1]
+				authSchema := parts[0]
+				authHost = authSchema + ":" + parts[1]
+				addr = ":" + parts[2]
 			} else {
 				addr = arr[0]
 			}
