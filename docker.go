@@ -13,7 +13,7 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, prefix, remote string, authHost string) error {
+func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, prefix, remote string, authHost string, minCacheSize int64) error {
 	uri, err := url.Parse(remote)
 	if err != nil {
 		return fmt.Errorf("parse remote: %w", err)
@@ -35,7 +35,7 @@ func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, 
 				return nil
 			}
 			// 小于1M时直接返回
-			if resp.ContentLength < 1024*1024 {
+			if resp.ContentLength < minCacheSize {
 				copyHander(w, resp)
 				_, err = io.Copy(w, resp.Body)
 				if err != nil {
