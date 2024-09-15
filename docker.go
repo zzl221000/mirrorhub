@@ -13,7 +13,7 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, prefix, remote string, authHost string, minCacheSize int64) error {
+func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, prefix, remote string, authHost string, serverHost string, minCacheSize int64) error {
 	uri, err := url.Parse(remote)
 	if err != nil {
 		return fmt.Errorf("parse remote: %w", err)
@@ -75,7 +75,7 @@ func dockerMirror(ctx context.Context, logger *log.Logger, addr string, bucket, 
 		if resp.StatusCode == http.StatusUnauthorized {
 			authHeader := resp.Header.Get("Www-Authenticate")
 			if authHeader != "" && authHost != "" {
-				newAuthHeader := strings.ReplaceAll(authHeader, authHost, "https://"+r.Header.Get("Host"))
+				newAuthHeader := strings.ReplaceAll(authHeader, authHost, serverHost)
 				resp.Header.Set("Www-Authenticate", newAuthHeader)
 			}
 		}

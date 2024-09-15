@@ -59,7 +59,7 @@ var Mirrors = []string{
 }
 
 func main() {
-	var endpoint, dlEndpoint, region, bucket, accessKey, secretKey string
+	var endpoint, dlEndpoint, region, bucket, accessKey, secretKey, serverHost string
 	var mirrors string
 	var minCacheSize int64 // 新增的变量，用于存储最小缓存大小
 	flag.StringVar(&endpoint, "endpoint", "", "s3 endpoint")
@@ -69,6 +69,7 @@ func main() {
 	flag.StringVar(&secretKey, "secret_key", "", "s3 secret key")
 	flag.StringVar(&region, "region", "", "s3 region")
 	flag.StringVar(&mirrors, "mirrors", strings.Join(Mirrors, ","), "mirror list")
+	flag.StringVar(&serverHost, "server_host", "", "server domain")
 	flag.Int64Var(&minCacheSize, "min_cache_size", 1024*1024, "minimum cache size in bytes")
 	flag.Parse()
 	log.Println(endpoint, dlEndpoint)
@@ -138,7 +139,7 @@ func main() {
 			switch uri.Scheme {
 			case "docker":
 				logger := log.New(os.Stderr, fmt.Sprintf("[%s] ", uri.Host), log.LstdFlags|log.Lshortfile)
-				err = dockerMirror(ctx, logger, addr, bucket, "docker", "https://"+uri.Host, authHost, minCacheSize)
+				err = dockerMirror(ctx, logger, addr, bucket, "docker", "https://"+uri.Host, authHost, serverHost, minCacheSize)
 				log.Println(err)
 			case "pip":
 				logger := log.New(os.Stderr, fmt.Sprintf("[%s] ", uri.Host), log.LstdFlags|log.Lshortfile)
